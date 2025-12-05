@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # 1. База данных
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: projectplatform
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  # 2. Redis для кэширования
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    deploy:
+      replicas: 1
+
+  # 3. Основной API сервис (2 реплики = кластер!)
+  api:
+    image: projectplatform-api:latest
+    environment:
+      DATABASE_URL: postgresql://admin:admin123@postgres:5432/postgres
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-key-123
+    ports:
+      - "8000:8000"
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 512M
+
+  # 4. Веб-панель
+  dashboard:
+    image: projectplatform-dashboard:latest
+    ports:
+      - "80:80"
+    deploy:
+      replicas: 1
+
+  # 5. Nginx (опционально, для балансировки)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    deploy:
+      replicas: 1
+    depends_on:
+      - api
+      - dashboard
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  default:
+    driver: overlay

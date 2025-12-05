@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: autopark-api
+  labels:
+    app: autopark
+    component: api
+spec:
+  replicas: 2  # ← КЛАСТЕР из 2 подов!
+  selector:
+    matchLabels:
+      app: autopark-api
+  template:
+    metadata:
+      labels:
+        app: autopark-api
+    spec:
+      containers:
+      - name: api
+        image: autopark-api:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: autopark-config
+              key: database.url
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: autopark-config
+              key: redis.url
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: autopark-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: autopark-dashboard
+  template:
+    metadata:
+      labels:
+        app: autopark-dashboard
+    spec:
+      containers:
+      - name: dashboard
+        image: autopark-dashboard:latest
+        ports:
+        - containerPort: 80

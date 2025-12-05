@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# CI/CD
+ci-cd/
+
+# Scripts (не нужны в образах)
+scripts/
+
+# Kubernetes (не нужны в образах)
+kubernetes/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Node modules (если будут)
+node_modules/
+
+# Build artifacts
+dist/
+build/
+
+

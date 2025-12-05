@@ -1,0 +1,39 @@
+{
+  "dashboard": {
+    "title": "Autopark Monitoring Dashboard",
+    "tags": ["autopark", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Vehicles Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count(vehicles_total)"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "API Requests",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Telemetry Alerts",
+        "type": "alertlist"
+      }
+    ],
+    "refresh": "10s",
+    "schemaVersion": 27,
+    "version": 1
+  }
+}
+
+

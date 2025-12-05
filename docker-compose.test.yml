@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  test-api:
+    build: ./src/api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:///test.db
+      REDIS_URL: redis://test-redis:6379/0
+      
+  test-redis:
+    image: redis:alpine

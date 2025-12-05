@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: autopark-config
+data:
+  database.url: "postgresql://admin:admin123@postgres-service:5432/autopark_db"
+  redis.url: "redis://redis-service:6379"
+  environment: "production"

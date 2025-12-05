@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # 1. База данных PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: autopark-postgres
+    environment:
+      POSTGRES_DB: autopark_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - autopark-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis для кэширования
+  redis:
+    image: redis:7-alpine
+    container_name: autopark-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - autopark-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 3. Основной API сервис
+  api:
+    build: ./src/api
+    container_name: autopark-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://admin:admin123@postgres:5432/autopark_db
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-key-123
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src/api:/app
+    networks:
+      - autopark-network
+    restart: unless-stopped
+
+  # 4. Веб-панель (упрощенная, на HTML)
+  dashboard:
+    build: ./src/dashboard
+    container_name: autopark-dashboard
+    ports:
+      - "3000:80"
+    volumes:
+      - ./src/dashboard:/usr/share/nginx/html
+    networks:
+      - autopark-network
+
+  # 5. Nginx как reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: autopark-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api
+      - dashboard
+    networks:
+      - autopark-network
+
+  # 6. Prometheus для мониторинга (БОНУС - 6-й контейнер!)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: autopark-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - autopark-network
+
+networks:
+  autopark-network:
+    driver: bridge
+    name: autopark-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
