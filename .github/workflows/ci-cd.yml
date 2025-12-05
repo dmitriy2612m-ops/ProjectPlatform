@@ -80,16 +80,19 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
     
     - name: Build API image
+      shell: cmd
       run: |
         docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:latest ./src/api
         docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:${{ github.sha }} ./src/api
     
     - name: Build Dashboard image
+      shell: cmd
       run: |
         docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-dashboard:latest ./src/dashboard
         docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-dashboard:${{ github.sha }} ./src/dashboard
     
     - name: Push images
+      shell: cmd
       run: |
         docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:latest
         docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:${{ github.sha }}
@@ -107,6 +110,7 @@ jobs:
       uses: actions/checkout@v3
     
     - name: Deploy to Docker Swarm
+      shell: cmd
       run: |
-        echo "Deployment would happen here"
-        echo "docker stack deploy -c docker-stack.yml autopark"
+        echo Deployment would happen here
+        echo docker stack deploy -c docker-stack.yml autopark
