@@ -9,12 +9,28 @@ on:
 env:
   REGISTRY: docker.io
   IMAGE_PREFIX: autopark
-  # DOCKER_USERNAME должен быть установлен в secrets
 
 jobs:
-  build:
-    name: Build and Test
+  tests:
+    name: Matrix: tests
     runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Run tests
+      run: |
+        docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from test-runner
+
+  build-and-push:
+    name: build-and-push
+    needs: tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
     
     steps:
     - name: Checkout code
@@ -39,12 +55,7 @@ jobs:
         docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-dashboard:latest ./src/dashboard
         docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-dashboard:${{ github.sha }} ./src/dashboard
     
-    - name: Run tests
-      run: |
-        docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from test-runner
-    
     - name: Push images
-      if: github.event_name == 'push'
       run: |
         docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:latest
         docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:${{ github.sha }}
@@ -52,8 +63,8 @@ jobs:
         docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-dashboard:${{ github.sha }}
 
   deploy:
-    name: Deploy to Swarm
-    needs: build
+    name: deploy
+    needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
@@ -65,5 +76,3 @@ jobs:
       run: |
         echo "Deployment would happen here"
         echo "docker stack deploy -c docker-stack.yml autopark"
-
-
