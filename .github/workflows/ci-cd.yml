@@ -5,6 +5,7 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:  # Ручной запуск
 
 env:
   REGISTRY: docker.io
@@ -13,7 +14,7 @@ env:
 jobs:
   tests:
     name: Matrix tests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted  # Используем локальный runner
     
     steps:
     - name: Checkout code
@@ -29,8 +30,8 @@ jobs:
   build-and-push:
     name: build-and-push
     needs: tests
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    runs-on: self-hosted  # Используем локальный runner
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     
     steps:
     - name: Checkout code
@@ -65,8 +66,8 @@ jobs:
   deploy:
     name: deploy
     needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: self-hosted  # Используем локальный runner
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
     
     steps:
     - name: Checkout code
