@@ -23,9 +23,42 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
     
-    - name: Run tests
+    - name: Check Docker Compose version
+      shell: cmd
       run: |
-        docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from test-runner
+        docker compose version 2>nul || docker-compose --version 2>nul || echo Docker Compose not found
+    
+    - name: Clean up previous test containers
+      shell: cmd
+      run: |
+        docker compose -f docker-compose.test.yml down -v 2>nul
+        docker-compose -f docker-compose.test.yml down -v 2>nul
+        echo Cleanup completed
+    
+    - name: Run tests
+      shell: cmd
+      run: |
+        docker compose version >nul 2>&1
+        if %errorlevel% equ 0 (
+          docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from test-runner
+        ) else (
+          docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from test-runner
+        )
+    
+    - name: Show test logs on failure
+      if: failure()
+      shell: cmd
+      run: |
+        docker compose -f docker-compose.test.yml logs 2>nul
+        docker-compose -f docker-compose.test.yml logs 2>nul
+    
+    - name: Clean up test containers
+      if: always()
+      shell: cmd
+      run: |
+        docker compose -f docker-compose.test.yml down -v 2>nul
+        docker-compose -f docker-compose.test.yml down -v 2>nul
+        echo Final cleanup completed
 
   build-and-push:
     name: build-and-push
