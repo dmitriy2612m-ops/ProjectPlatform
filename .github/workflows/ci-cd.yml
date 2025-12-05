@@ -9,6 +9,7 @@ on:
 env:
   REGISTRY: docker.io
   IMAGE_PREFIX: autopark
+  # DOCKER_USERNAME должен быть установлен в secrets
 
 jobs:
   build:
@@ -30,25 +31,25 @@ jobs:
     
     - name: Build API image
       run: |
-        docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-api:latest ./src/api
-        docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-api:${{ github.sha }} ./src/api
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:latest ./src/api
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:${{ github.sha }} ./src/api
     
     - name: Build Dashboard image
       run: |
-        docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-dashboard:latest ./src/dashboard
-        docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-dashboard:${{ github.sha }} ./src/dashboard
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-dashboard:latest ./src/dashboard
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-dashboard:${{ github.sha }} ./src/dashboard
     
     - name: Run tests
       run: |
         docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from test-runner
     
     - name: Push images
-      if: github.event_name == 'push'
+      if: github.event_name == 'push' && secrets.DOCKER_USERNAME != ''
       run: |
-        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-api:latest
-        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-api:${{ github.sha }}
-        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-dashboard:latest
-        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-dashboard:${{ github.sha }}
+        docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:${{ github.sha }}
+        docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-dashboard:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-dashboard:${{ github.sha }}
 
   deploy:
     name: Deploy to Swarm
