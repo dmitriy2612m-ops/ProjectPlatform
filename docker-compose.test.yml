@@ -29,39 +29,37 @@ services:
     depends_on:
       test-api:
         condition: service_healthy
-    command: >
-      sh -c "
-        echo '⏳ Waiting for API to be ready...' &&
-        sleep 3 &&
-        echo '' &&
-        echo '📊 Testing /health endpoint...' &&
-        HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://test-api:8000/health) &&
-        if [ \"$HTTP_CODE\" = '200' ]; then
+    command:
+      - sh
+      - -c
+      - |
+        echo '⏳ Waiting for API to be ready...'
+        sleep 3
+        echo ''
+        echo '📊 Testing /health endpoint...'
+        if curl -f -s http://test-api:8000/health > /dev/null; then
           echo '✅ /health returned 200 OK'
         else
-          echo '❌ /health returned $HTTP_CODE'
+          echo '❌ /health check failed'
           exit 1
-        fi &&
-        echo '' &&
-        echo '📊 Testing / endpoint...' &&
-        HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://test-api:8000/) &&
-        if [ \"$HTTP_CODE\" = '200' ]; then
+        fi
+        echo ''
+        echo '📊 Testing / endpoint...'
+        if curl -f -s http://test-api:8000/ > /dev/null; then
           echo '✅ / returned 200 OK'
         else
-          echo '❌ / returned $HTTP_CODE'
+          echo '❌ / check failed'
           exit 1
-        fi &&
-        echo '' &&
-        echo '📊 Testing /vehicles endpoint...' &&
-        HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://test-api:8000/vehicles) &&
-        if [ \"$HTTP_CODE\" = '200' ]; then
+        fi
+        echo ''
+        echo '📊 Testing /vehicles endpoint...'
+        if curl -f -s http://test-api:8000/vehicles > /dev/null; then
           echo '✅ /vehicles returned 200 OK'
         else
-          echo '⚠️  /vehicles returned $HTTP_CODE (acceptable for test)'
-        fi &&
-        echo '' &&
+          echo '⚠️  /vehicles check failed (acceptable for test without DB)'
+        fi
+        echo ''
         echo '✅ All tests passed!'
-      "
     networks:
       - test-network
 
