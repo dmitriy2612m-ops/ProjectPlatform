@@ -44,7 +44,7 @@ jobs:
         docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from test-runner
     
     - name: Push images
-      if: github.event_name == 'push' && secrets.DOCKER_USERNAME != ''
+      if: github.event_name == 'push'
       run: |
         docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:latest
         docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_PREFIX }}-api:${{ github.sha }}
