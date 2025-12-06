@@ -37,8 +37,7 @@ services:
         sleep 3
         echo ''
         echo '📊 Test 1: Testing /health endpoint...'
-        HEALTH_RESPONSE=$(curl -f -s http://test-api:8000/health)
-        if [ $? -eq 0 ] && echo "$HEALTH_RESPONSE" | grep -q '"status"'; then
+        if curl -f -s http://test-api:8000/health | grep -q '"status"'; then
           echo '✅ /health returned 200 OK with valid JSON'
         else
           echo '❌ /health check failed'
@@ -46,8 +45,7 @@ services:
         fi
         echo ''
         echo '📊 Test 2: Testing / endpoint...'
-        ROOT_RESPONSE=$(curl -f -s http://test-api:8000/)
-        if [ $? -eq 0 ] && echo "$ROOT_RESPONSE" | grep -q '"service"'; then
+        if curl -f -s http://test-api:8000/ | grep -q '"service"'; then
           echo '✅ / returned 200 OK with valid JSON'
         else
           echo '❌ / check failed'
@@ -55,8 +53,7 @@ services:
         fi
         echo ''
         echo '📊 Test 3: Testing /metrics endpoint...'
-        METRICS_RESPONSE=$(curl -f -s http://test-api:8000/metrics)
-        if [ $? -eq 0 ] && echo "$METRICS_RESPONSE" | grep -q '"total_vehicles"'; then
+        if curl -f -s http://test-api:8000/metrics | grep -q '"total_vehicles"'; then
           echo '✅ /metrics returned 200 OK with valid JSON'
         else
           echo '❌ /metrics check failed'
