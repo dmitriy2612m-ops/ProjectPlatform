@@ -36,38 +36,34 @@ services:
         echo '⏳ Waiting for API to be ready...'
         sleep 3
         echo ''
-        echo '📊 Testing /health endpoint...'
-        if curl -f -s http://test-api:8000/health > /dev/null; then
-          echo '✅ /health returned 200 OK'
+        echo '📊 Test 1: Testing /health endpoint...'
+        HEALTH_RESPONSE=$(curl -f -s http://test-api:8000/health)
+        if [ $? -eq 0 ] && echo "$HEALTH_RESPONSE" | grep -q '"status"'; then
+          echo '✅ /health returned 200 OK with valid JSON'
         else
           echo '❌ /health check failed'
           exit 1
         fi
         echo ''
-        echo '📊 Testing / endpoint...'
-        if curl -f -s http://test-api:8000/ > /dev/null; then
-          echo '✅ / returned 200 OK'
+        echo '📊 Test 2: Testing / endpoint...'
+        ROOT_RESPONSE=$(curl -f -s http://test-api:8000/)
+        if [ $? -eq 0 ] && echo "$ROOT_RESPONSE" | grep -q '"service"'; then
+          echo '✅ / returned 200 OK with valid JSON'
         else
           echo '❌ / check failed'
           exit 1
         fi
         echo ''
-        echo '📊 Testing /vehicles endpoint...'
-        if curl -f -s http://test-api:8000/vehicles > /dev/null; then
-          echo '✅ /vehicles returned 200 OK'
-        else
-          echo '⚠️  /vehicles check failed (acceptable for test without DB)'
-        fi
-        echo ''
-        echo '📊 Testing /metrics endpoint...'
-        if curl -f -s http://test-api:8000/metrics > /dev/null; then
-          echo '✅ /metrics returned 200 OK'
+        echo '📊 Test 3: Testing /metrics endpoint...'
+        METRICS_RESPONSE=$(curl -f -s http://test-api:8000/metrics)
+        if [ $? -eq 0 ] && echo "$METRICS_RESPONSE" | grep -q '"total_vehicles"'; then
+          echo '✅ /metrics returned 200 OK with valid JSON'
         else
           echo '❌ /metrics check failed'
           exit 1
         fi
         echo ''
-        echo '✅ All tests passed!'
+        echo '✅ All 3 tests passed!'
     networks:
       - test-network
 
