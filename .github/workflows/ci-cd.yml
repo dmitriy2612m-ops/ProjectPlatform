@@ -25,12 +25,14 @@ jobs:
       run: |
         docker --version
         if %errorlevel% neq 0 (
-          echo ERROR: Docker is not available or not running
+          echo ERROR: Docker CLI is not available. Please install Docker Desktop.
           exit 1
         )
-        docker info
+        docker info >nul 2>&1
         if %errorlevel% neq 0 (
-          echo ERROR: Docker daemon is not running
+          echo WARNING: Docker daemon is not running. Attempting to start Docker Desktop...
+          echo Please ensure Docker Desktop is running before running this workflow.
+          echo You can start Docker Desktop manually or configure it to start automatically.
           exit 1
         )
         echo Docker is available and running
@@ -72,8 +74,12 @@ jobs:
       if: always()
       shell: cmd
       run: |
-        docker compose -f docker-compose.test.yml down -v 2>nul || docker-compose -f docker-compose.test.yml down -v 2>nul || echo Cleanup completed with warnings
+        docker compose -f docker-compose.test.yml down -v 2>nul
+        if %errorlevel% neq 0 (
+          docker-compose -f docker-compose.test.yml down -v 2>nul
+        )
         echo Final cleanup completed
+        exit 0
 
   build-and-push:
     name: build-and-push
@@ -90,12 +96,14 @@ jobs:
       run: |
         docker --version
         if %errorlevel% neq 0 (
-          echo ERROR: Docker is not available or not running
+          echo ERROR: Docker CLI is not available. Please install Docker Desktop.
           exit 1
         )
-        docker info
+        docker info >nul 2>&1
         if %errorlevel% neq 0 (
-          echo ERROR: Docker daemon is not running
+          echo WARNING: Docker daemon is not running. Attempting to start Docker Desktop...
+          echo Please ensure Docker Desktop is running before running this workflow.
+          echo You can start Docker Desktop manually or configure it to start automatically.
           exit 1
         )
         echo Docker is available and running
