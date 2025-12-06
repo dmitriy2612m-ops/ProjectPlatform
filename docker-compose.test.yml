@@ -59,6 +59,14 @@ services:
           echo '⚠️  /vehicles check failed (acceptable for test without DB)'
         fi
         echo ''
+        echo '📊 Testing /metrics endpoint...'
+        if curl -f -s http://test-api:8000/metrics > /dev/null; then
+          echo '✅ /metrics returned 200 OK'
+        else
+          echo '❌ /metrics check failed'
+          exit 1
+        fi
+        echo ''
         echo '✅ All tests passed!'
     networks:
       - test-network
