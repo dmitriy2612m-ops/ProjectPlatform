@@ -114,6 +114,37 @@ services:
     networks:
       - autopark-overlay
 
+  # 7. Grafana для визуализации метрик
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - target: 3000
+        published: 3000
+        protocol: tcp
+        mode: host
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - type: bind
+        source: ./monitoring/grafana/datasources.yml
+        target: /etc/grafana/provisioning/datasources/datasources.yml
+      - grafana_data:/var/lib/grafana
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    networks:
+      - autopark-overlay
+    depends_on:
+      - prometheus
+
 networks:
   autopark-overlay:
     driver: overlay
@@ -123,4 +154,6 @@ volumes:
   postgres_data:
     driver: local
   prometheus_data:
+    driver: local
+  grafana_data:
     driver: local

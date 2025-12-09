@@ -181,6 +181,178 @@ function renderVehicles() {
     });
 }
 
+// Переключение меню
+function toggleMenu(vehicleId) {
+    // Закрываем все открытые меню
+    document.querySelectorAll('.vehicle-menu').forEach(menu => {
+        if (menu.id !== `menu-${vehicleId}`) {
+            menu.classList.remove('active');
+        }
+    });
+    
+    // Переключаем текущее меню
+    const menu = document.getElementById(`menu-${vehicleId}`);
+    if (menu) {
+        menu.classList.toggle('active');
+    }
+}
+
+// Закрытие всех меню при клике вне их
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.vehicle-menu-container')) {
+        document.querySelectorAll('.vehicle-menu').forEach(menu => {
+            menu.classList.remove('active');
+        });
+    }
+});
+
+// Открытие модального окна для изменения статуса
+function openStatusModal(vehicleId) {
+    // Закрываем меню
+    const menu = document.getElementById(`menu-${vehicleId}`);
+    if (menu) {
+        menu.classList.remove('active');
+    }
+    
+    // Находим транспортное средство
+    const vehicle = vehiclesData.find(v => v.id === vehicleId);
+    if (!vehicle) {
+        alert('Транспортное средство не найдено');
+        return;
+    }
+    
+    // Показываем модальное окно выбора статуса
+    showStatusModal(vehicle);
+}
+
+// Показ модального окна выбора статуса
+function showStatusModal(vehicle) {
+    const statusOptions = [
+        { value: 'active', label: 'Готова к работе', icon: '🚗' },
+        { value: 'maintenance', label: 'На обслуживании', icon: '🔧' },
+        { value: 'inactive', label: 'Неактивен', icon: '⏸️' }
+    ];
+    
+    const modalHtml = `
+        <div class="modal active" id="status-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Изменить статус</h3>
+                    <button class="close" onclick="closeStatusModal()">&times;</button>
+                </div>
+                <div class="status-modal-body">
+                    <p style="margin-bottom: 1.5rem; color: #666;">
+                        Транспортное средство: <strong>${vehicle.model} (${vehicle.license_plate})</strong>
+                    </p>
+                    <p style="margin-bottom: 1rem; color: #666;">Текущий статус: <strong>${getStatusLabel(vehicle.status)}</strong></p>
+                    <div class="status-options">
+                        ${statusOptions.map(option => `
+                            <button class="status-option ${vehicle.status === option.value ? 'current' : ''}" 
+                                    onclick="changeStatus(${vehicle.id}, '${option.value}')">
+                                <span class="status-option-icon">${option.icon}</span>
+                                <span class="status-option-label">${option.label}</span>
+                                ${vehicle.status === option.value ? '<span class="status-option-current">Текущий</span>' : ''}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Удаляем старое модальное окно если есть
+    const oldModal = document.getElementById('status-modal');
+    if (oldModal) {
+        oldModal.remove();
+    }
+    
+    // Добавляем новое модальное окно
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.body.style.overflow = 'hidden';
+}
+
+// Закрытие модального окна статуса
+function closeStatusModal() {
+    const modal = document.getElementById('status-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.remove();
+            document.body.style.overflow = '';
+        }, 300);
+    }
+}
+
+// Изменение статуса транспортного средства
+async function changeStatus(vehicleId, newStatus) {
+    try {
+        const response = await fetch(`/api/vehicles/${vehicleId}/status?status=${newStatus}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Ошибка сервера' }));
+            throw new Error(error.detail || 'Ошибка при изменении статуса');
+        }
+        
+        // Закрываем модальное окно
+        closeStatusModal();
+        
+        // Обновляем данные
+        await loadData();
+        showNotification('Статус успешно изменен!', 'success');
+        
+    } catch (error) {
+        console.error('Error updating status:', error);
+        alert('Ошибка: ' + error.message);
+    }
+}
+
+// Удаление транспортного средства
+async function deleteVehicle(vehicleId) {
+    const vehicle = vehiclesData.find(v => v.id === vehicleId);
+    const vehicleName = vehicle ? `${vehicle.model} (${vehicle.license_plate})` : 'транспортное средство';
+    
+    if (!confirm(`Вы уверены, что хотите удалить ${vehicleName}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/vehicles/${vehicleId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Ошибка сервера' }));
+            throw new Error(error.detail || 'Ошибка при удалении');
+        }
+        
+        // Обновляем данные
+        await loadData();
+        showNotification('Транспортное средство успешно удалено!', 'success');
+        
+    } catch (error) {
+        console.error('Error deleting vehicle:', error);
+        alert('Ошибка: ' + error.message);
+    }
+}
+
+// Получить название статуса
+function getStatusLabel(status) {
+    const labels = {
+        'active': 'Готова к работе',
+        'maintenance': 'На обслуживании',
+        'inactive': 'Неактивен'
+    };
+    return labels[status] || status;
+}
+
 // Создание карточки транспортного средства
 function createVehicleCard(vehicle) {
     const statusLabels = {
@@ -196,10 +368,25 @@ function createVehicleCard(vehicle) {
     };
     
     return `
-        <div class="vehicle-card">
+        <div class="vehicle-card" data-vehicle-id="${vehicle.id}">
             <div class="vehicle-header">
                 <div class="vehicle-model">${statusIcons[vehicle.status] || '🚗'} ${vehicle.model || 'Не указано'}</div>
                 <div class="vehicle-plate">${vehicle.license_plate || 'N/A'}</div>
+            </div>
+            <div class="vehicle-menu-container">
+                <button class="vehicle-menu-btn" onclick="toggleMenu(${vehicle.id})" title="Меню действий">
+                    <span class="menu-bars">☰</span>
+                </button>
+                <div class="vehicle-menu" id="menu-${vehicle.id}">
+                    <button class="menu-item" onclick="openStatusModal(${vehicle.id})">
+                        <span class="menu-icon">🔄</span>
+                        <span>Изменить статус</span>
+                    </button>
+                    <button class="menu-item menu-item-danger" onclick="deleteVehicle(${vehicle.id})">
+                        <span class="menu-icon">🗑️</span>
+                        <span>Удалить</span>
+                    </button>
+                </div>
             </div>
             <div class="vehicle-info">
                 <strong>Год выпуска:</strong> ${vehicle.year || 'Не указан'}

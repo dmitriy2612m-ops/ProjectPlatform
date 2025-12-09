@@ -99,6 +99,27 @@ services:
     networks:
       - autopark-network
 
+  # 7. Grafana для визуализации метрик
+  grafana:
+    image: grafana/grafana:latest
+    container_name: autopark-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - grafana_data:/var/lib/grafana
+    networks:
+      - autopark-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 networks:
   autopark-network:
     driver: bridge
@@ -110,4 +131,6 @@ volumes:
   redis_data:
     driver: local
   prometheus_data:
+    driver: local
+  grafana_data:
     driver: local

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.ext.declarative import declarative_base
@@ -51,12 +51,22 @@ class VehicleDB(Base):
     status = Column(String, default="active")
     created_at = Column(DateTime, default=datetime.utcnow)
 
-# Pydantic модель
+# Pydantic модели
 class Vehicle(BaseModel):
     license_plate: str
     model: str
     year: int = None
     fuel_type: str = None
+
+    class Config:
+        from_attributes = True
+
+class VehicleUpdate(BaseModel):
+    license_plate: str = None
+    model: str = None
+    year: int = None
+    fuel_type: str = None
+    status: str = None
 
     class Config:
         from_attributes = True
@@ -180,6 +190,143 @@ async def get_metrics(response: Response):
     
     # Возвращаем метрики в формате Prometheus
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+@app.get("/vehicles/{vehicle_id}")
+async def get_vehicle(vehicle_id: int):
+    """Получить одно транспортное средство по ID"""
+    http_requests_total.labels(method='GET', endpoint='/vehicles/{id}').inc()
+    try:
+        db = SessionLocal()
+        vehicle = db.query(VehicleDB).filter(VehicleDB.id == vehicle_id).first()
+        db.close()
+        
+        if not vehicle:
+            raise HTTPException(status_code=404, detail="Транспортное средство не найдено")
+        
+        return vehicle
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {str(e)}")
+
+@app.put("/vehicles/{vehicle_id}")
+async def update_vehicle(vehicle_id: int, vehicle_update: VehicleUpdate):
+    """Обновить транспортное средство"""
+    http_requests_total.labels(method='PUT', endpoint='/vehicles/{id}').inc()
+    try:
+        db = SessionLocal()
+        vehicle = db.query(VehicleDB).filter(VehicleDB.id == vehicle_id).first()
+        
+        if not vehicle:
+            db.close()
+            raise HTTPException(status_code=404, detail="Транспортное средство не найдено")
+        
+        # Обновляем только переданные поля
+        update_data = vehicle_update.dict(exclude_unset=True)
+        
+        # Валидация статуса
+        if 'status' in update_data:
+            valid_statuses = ['active', 'maintenance', 'inactive']
+            if update_data['status'] not in valid_statuses:
+                db.close()
+                raise HTTPException(status_code=400, detail=f"Недопустимый статус. Допустимые значения: {', '.join(valid_statuses)}")
+        
+        for key, value in update_data.items():
+            if value is not None:
+                setattr(vehicle, key, value)
+        
+        db.commit()
+        db.refresh(vehicle)
+        db.close()
+        
+        # Обновляем метрики
+        try:
+            db = SessionLocal()
+            vehicles_count = db.query(VehicleDB).count()
+            active_count = db.query(VehicleDB).filter(VehicleDB.status == "active").count()
+            db.close()
+            redis_client.set("vehicles:count", vehicles_count)
+            vehicles_count_gauge.set(vehicles_count)
+            active_vehicles_gauge.set(active_count)
+        except:
+            pass
+        
+        return {"message": "Vehicle updated", "vehicle": vehicle}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {str(e)}")
+
+@app.patch("/vehicles/{vehicle_id}/status")
+async def update_vehicle_status(vehicle_id: int, status: str = Query(..., description="Новый статус: active, maintenance, inactive")):
+    """Быстрое обновление статуса транспортного средства"""
+    http_requests_total.labels(method='PATCH', endpoint='/vehicles/{id}/status').inc()
+    
+    valid_statuses = ['active', 'maintenance', 'inactive']
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Недопустимый статус. Допустимые значения: {', '.join(valid_statuses)}")
+    
+    try:
+        db = SessionLocal()
+        vehicle = db.query(VehicleDB).filter(VehicleDB.id == vehicle_id).first()
+        
+        if not vehicle:
+            db.close()
+            raise HTTPException(status_code=404, detail="Транспортное средство не найдено")
+        
+        vehicle.status = status
+        db.commit()
+        db.refresh(vehicle)
+        db.close()
+        
+        # Обновляем метрики
+        try:
+            db = SessionLocal()
+            active_count = db.query(VehicleDB).filter(VehicleDB.status == "active").count()
+            db.close()
+            active_vehicles_gauge.set(active_count)
+        except:
+            pass
+        
+        return {"message": "Status updated", "vehicle": vehicle}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {str(e)}")
+
+@app.delete("/vehicles/{vehicle_id}")
+async def delete_vehicle(vehicle_id: int):
+    """Удалить транспортное средство"""
+    http_requests_total.labels(method='DELETE', endpoint='/vehicles/{id}').inc()
+    try:
+        db = SessionLocal()
+        vehicle = db.query(VehicleDB).filter(VehicleDB.id == vehicle_id).first()
+        
+        if not vehicle:
+            db.close()
+            raise HTTPException(status_code=404, detail="Транспортное средство не найдено")
+        
+        db.delete(vehicle)
+        db.commit()
+        db.close()
+        
+        # Обновляем метрики
+        try:
+            db = SessionLocal()
+            vehicles_count = db.query(VehicleDB).count()
+            active_count = db.query(VehicleDB).filter(VehicleDB.status == "active").count()
+            db.close()
+            redis_client.set("vehicles:count", vehicles_count)
+            vehicles_count_gauge.set(vehicles_count)
+            active_vehicles_gauge.set(active_count)
+        except:
+            pass
+        
+        return {"message": "Vehicle deleted", "id": vehicle_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {str(e)}")
 
 @app.get("/api/metrics")
 async def get_api_metrics():
